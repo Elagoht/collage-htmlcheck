@@ -1,0 +1,46 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Elagoht/collage-snippets-highlighter/main/schemas/collage-plugin-manifest.schema.json",
+  "name": "elagoht/htmlcheck",
+  "description": "A collage plugin that checks the HTML a site renders and reports what it finds as warnings and errors.",
+  "repository": "https://github.com/Elagoht/collage-htmlcheck",
+  "config": {
+    "type": "object",
+    "description": "A collage plugin that checks the HTML a site renders and reports what it finds as warnings and errors.",
+    "properties": {
+      "descriptionMax": {
+        "type": "integer"
+      },
+      "ignoreLinks": {
+        "type": "array",
+        "description": "IgnoreLinks are path prefixes \"broken-link\" does not check: a route served by a handler of your own, an API.",
+        "items": {
+          "type": "string"
+        }
+      },
+      "inProduction": {
+        "type": "boolean",
+        "description": "InProduction checks pages on a production server too. Its findings go nowhere there — collage shows them only in development and in builds — so this is only for a check of your own reading them in a hook."
+      },
+      "pageBudget": {
+        "type": "integer",
+        "description": "PageBudget is the size in bytes past which a page is reported by \"page-size\". Zero leaves the rule silent."
+      },
+      "rules": {
+        "type": "object",
+        "description": "Rules changes rules' levels, by name. A rule not named keeps its default; see Rules() for every rule and its default.",
+        "additionalProperties": {
+          "type": "string",
+          "enum": [
+            "error",
+            "off",
+            "warn"
+          ]
+        }
+      },
+      "titleMax": {
+        "type": "integer",
+        "description": "TitleMax and DescriptionMax are the lengths, in characters, past which a search engine cuts a title or a description short. Default 60 and 160."
+      }
+    }
+  }
+}
