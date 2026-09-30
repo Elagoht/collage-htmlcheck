@@ -41,6 +41,7 @@
         "type": "integer",
         "description": "TitleMax and DescriptionMax are the lengths, in characters, past which a search engine cuts a title or a description short. Default 60 and 160."
       }
-    }
+    },
+    "additionalProperties": false
   }
 }
