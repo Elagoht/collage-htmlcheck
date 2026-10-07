@@ -9,3 +9,5 @@ go 1.26.0
 require github.com/Elagoht/collage v0.50.0
 
 require golang.org/x/net v0.59.0
+
+retract v0.1.3 // tagged by mistake on the previous release's code; use v0.1.4 or later
