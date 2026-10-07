@@ -21,10 +21,10 @@ type site struct {
 
 type sitePage struct {
 	name, locale string
-	path        string
-	title       string
-	description string
-	links       []string // href values of <a> and <link rel=alternate|canonical>
+	path         string
+	title        string
+	description  string
+	links        []string // href values of <a> and <link rel=alternate|canonical>
 }
 
 func readSite(files []collage.BuiltFile) (*site, error) {

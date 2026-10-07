@@ -100,15 +100,17 @@ type Plugin struct {
 func New(opts Options) *Plugin { return &Plugin{opts: opts} }
 
 func (p *Plugin) Name() string                   { return Name }
-func (p *Plugin) Version() string                { return "0.1.2" }
+func (p *Plugin) Version() string                { return "0.1.3" }
 func (p *Plugin) Shutdown(context.Context) error { return nil }
 
 // Init reads the configuration and refuses a rule or level it does not know, so a
 // misspelt rule is not a rule silently left on.
 func (p *Plugin) Init(_ context.Context, host collage.Host) error {
-	if err := host.Config(&p.opts); err != nil {
+	cfg, err := collage.PluginConfig(host, p.opts)
+	if err != nil {
 		return err
 	}
+	p.opts = cfg
 	p.dev = host.DevMode()
 	if p.opts.TitleMax <= 0 {
 		p.opts.TitleMax = 60
