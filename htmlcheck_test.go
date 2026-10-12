@@ -72,11 +72,7 @@ func app(t *testing.T, dev bool, opts htmlcheck.Options, pages map[string]string
 // findings builds the site and returns its findings as "rule level path".
 func findings(t *testing.T, a *collage.App) ([]collage.Finding, error) {
 	t.Helper()
-	b, err := collage.NewBuilder(a, collage.BuildOptions{OutDir: t.TempDir()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	report, err := b.Build(context.Background())
+	report, err := collage.Build(context.Background(), a, collage.BuildOptions{OutDir: t.TempDir()})
 	return report.Findings, err
 }
 
