@@ -97,7 +97,8 @@ htmlcheck.New(htmlcheck.Options{
 ```
 
 A rule name the plugin does not know stops the application from starting, so a
-misspelt rule is not one silently left on. So does a negative `titleMax`,
+misspelt rule is not one silently left on. So does an `ignoreLinks` prefix not
+beginning with `/`, and a negative `titleMax`,
 `descriptionMax` or `pageBudget`; 0 is the default (60, 160, and no budget).
 
 ## Changes
@@ -107,8 +108,8 @@ misspelt rule is not one silently left on. So does a negative `titleMax`,
 | Was | Now |
 | --- | --- |
 | `inProduction` / `Options.InProduction` | removed: its findings went nowhere on a production server. Read findings in a static build or in development |
-| a negative `titleMax` / `descriptionMax` meaning the default | an error; 0 is the default |
-| `ignoreLinks` as a raw string prefix (`"/api"` also skipped `/apiary`) | a segment prefix, with or without the trailing `/` |
+| a negative `titleMax` / `descriptionMax` meaning the default, a negative `pageBudget` leaving the rule silent | an error; 0 is the default (60, 160, no budget) |
+| `ignoreLinks` as a raw string prefix (`"/api"` also skipped `/apiary`; `"api"` was accepted and matched nothing) | a segment prefix, with or without the trailing `/`; one not beginning with `/` stops the app |
 
 An `inProduction` key now stops the app with `unknown key "inProduction"`.
 Requires collage v0.61.0 (it was built against v0.60.0).

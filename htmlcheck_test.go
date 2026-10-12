@@ -251,3 +251,11 @@ func TestIgnoreLinksSlash(t *testing.T) {
 		}
 	}
 }
+
+// An ignoreLinks prefix is a path: one not beginning with "/" stops the app.
+func TestIgnoreLinksMustBeAPath(t *testing.T) {
+	_, err := collagetest.TrySite(t, siteOptions(false, htmlcheck.Options{IgnoreLinks: []string{"api"}}, map[string]string{"index": clean})...)
+	if err == nil || !strings.Contains(err.Error(), `htmlcheck: ignoreLinks prefix "api" must begin with /`) {
+		t.Errorf("err = %v, want the ignoreLinks error", err)
+	}
+}

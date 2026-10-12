@@ -121,6 +121,9 @@ func (p *Plugin) Init(_ context.Context, host collage.Host) error {
 	// A copy without trailing slashes: the caller's Options keep their slice.
 	ignore := make([]string, 0, len(cfg.IgnoreLinks))
 	for _, prefix := range cfg.IgnoreLinks {
+		if !strings.HasPrefix(prefix, "/") {
+			return fmt.Errorf("htmlcheck: ignoreLinks prefix %q must begin with /", prefix)
+		}
 		ignore = append(ignore, strings.TrimSuffix(prefix, "/"))
 	}
 	cfg.IgnoreLinks = ignore
