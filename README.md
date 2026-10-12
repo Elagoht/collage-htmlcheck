@@ -10,7 +10,7 @@ app, err := collage.New(&collage.Config{
 })
 ```
 
-Requires collage v0.50.0 or later.
+Requires collage v0.61.0 or later.
 
 ## Where it runs
 
@@ -64,7 +64,8 @@ A name is what assistive technology would announce: `aria-label`,
 inside, the `title` attribute. The same page in two locales may share a title and a
 description. `broken-link` resolves relative links, ignores other hosts, `mailto:`
 and fragments, and skips the prefixes in `ignoreLinks` — a route a handler of your
-own answers.
+own answers. A prefix matches at a segment boundary, with or without its trailing
+`/`: `"/api"` and `"/api/"` both skip `/api` and `/api/v1`, and neither `/apiary`.
 
 `htmlcheck.Rules()` lists every rule with its default.
 
@@ -96,4 +97,18 @@ htmlcheck.New(htmlcheck.Options{
 ```
 
 A rule name the plugin does not know stops the application from starting, so a
-misspelt rule is not one silently left on.
+misspelt rule is not one silently left on. So does a negative `titleMax`,
+`descriptionMax` or `pageBudget`; 0 is the default (60, 160, and no budget).
+
+## Changes
+
+### Changed in v0.2.0
+
+| Was | Now |
+| --- | --- |
+| `inProduction` / `Options.InProduction` | removed: its findings went nowhere on a production server. Read findings in a static build or in development |
+| a negative `titleMax` / `descriptionMax` meaning the default | an error; 0 is the default |
+| `ignoreLinks` as a raw string prefix (`"/api"` also skipped `/apiary`) | a segment prefix, with or without the trailing `/` |
+
+An `inProduction` key now stops the app with `unknown key "inProduction"`.
+Requires collage v0.61.0 (it was built against v0.60.0).

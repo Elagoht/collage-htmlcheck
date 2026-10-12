@@ -8,10 +8,10 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	htmlcheck "github.com/Elagoht/collage-htmlcheck"
 	"github.com/Elagoht/collage/pkg/collage"
+	"github.com/Elagoht/collage/pkg/collagetest"
 )
 
 const clean = `<!doctype html><html lang="en"><head><title>A fine page</title>
@@ -36,37 +36,36 @@ const broken = `<html><head><script src="/block.js"></script></head><body>
 <div tabindex="3">jumpy</div>
 </body></html>`
 
-func app(t *testing.T, dev bool, opts htmlcheck.Options, pages map[string]string) *collage.App {
-	t.Helper()
-	fsys := fstest.MapFS{}
-	for name, body := range pages {
-		fsys["t/"+name+".html"] = &fstest.MapFile{Data: []byte(body)}
-	}
-	a, err := collage.New(&collage.Config{
-		DevMode:  dev,
-		Server:   collage.ServerConfig{Host: "localhost", Port: 3000},
-		Template: collage.TemplateConfig{FS: fsys, Root: "t"},
-		Plugins:  []collage.Plugin{htmlcheck.New(opts)},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+// siteOptions are a site with the plugin and one page per entry, at /name, or
+// at / for "index".
+func siteOptions(dev bool, opts htmlcheck.Options, pages map[string]string) []collagetest.SiteOption {
+	templates := map[string]string{}
 	names := make([]string, 0, len(pages))
-	for name := range pages {
+	for name, body := range pages {
+		templates[name+".html"] = body
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	var items []collage.Registrable
 	for _, name := range names {
 		path := "/" + name
 		if name == "index" {
 			path = "/"
 		}
-		page := collage.NewPage(name).WithContent(collage.NewFragment(name, name+".html").Build()).WithPath("en", path).Build()
-		if err := a.RegisterPage(page); err != nil {
-			t.Fatal(err)
-		}
+		items = append(items, collage.NewPage(name).WithContent(collage.NewFragment(name, name+".html").Build()).WithPath("en", path).Build())
 	}
-	return a
+	return []collagetest.SiteOption{
+		collagetest.WithoutHome(),
+		collagetest.WithPlugins(htmlcheck.New(opts)),
+		collagetest.WithTemplates(templates),
+		collagetest.WithRegister(items...),
+		collagetest.WithConfig(func(c *collage.Config) { c.DevMode = dev }),
+	}
+}
+
+func app(t *testing.T, dev bool, opts htmlcheck.Options, pages map[string]string) *collage.App {
+	t.Helper()
+	return collagetest.NewSite(t, siteOptions(dev, opts, pages)...).App
 }
 
 // findings builds the site and returns its findings as "rule level path".
@@ -155,11 +154,9 @@ func TestLevels(t *testing.T) {
 		t.Error("an Off rule reported")
 	}
 
-	bad := app(t, false, htmlcheck.Options{Rules: map[string]htmlcheck.Level{"img-alts": htmlcheck.Off}}, map[string]string{"index": clean})
-	rec := httptest.NewRecorder()
-	bad.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Errorf("a misspelt rule started the application: %d", rec.Code)
+	_, err := collagetest.TrySite(t, siteOptions(false, htmlcheck.Options{Rules: map[string]htmlcheck.Level{"img-alts": htmlcheck.Off}}, map[string]string{"index": clean})...)
+	if err == nil || !strings.Contains(err.Error(), "img-alts") {
+		t.Errorf("a misspelt rule started the application: %v", err)
 	}
 }
 
@@ -207,6 +204,50 @@ func TestRulesAreDocumented(t *testing.T) {
 	for _, r := range htmlcheck.Rules() {
 		if r.Doc == "" || (r.Default != htmlcheck.Warn && r.Default != htmlcheck.Error) {
 			t.Errorf("rule %+v", r)
+		}
+	}
+}
+
+// A negative length or budget is an error, not the default; zero is the default.
+func TestNegativeNumbers(t *testing.T) {
+	for name, opts := range map[string]htmlcheck.Options{
+		"titleMax":       {TitleMax: -1},
+		"descriptionMax": {DescriptionMax: -1},
+		"pageBudget":     {PageBudget: -1},
+	} {
+		_, err := collagetest.TrySite(t, siteOptions(false, opts, map[string]string{"index": clean})...)
+		if err == nil || !strings.Contains(err.Error(), "htmlcheck: "+name) {
+			t.Errorf("%s -1: err = %v, want an htmlcheck: %s error", name, err, name)
+		}
+	}
+}
+
+// inProduction is gone: the key now stops the app.
+func TestInProductionRemoved(t *testing.T) {
+	_, err := collagetest.TrySite(t, append(siteOptions(false, htmlcheck.Options{}, map[string]string{"index": clean}),
+		collagetest.WithPluginConfig(htmlcheck.Name, `{"inProduction":true}`))...)
+	if err == nil || !strings.Contains(err.Error(), `unknown key "inProduction"`) {
+		t.Errorf("err = %v, want unknown key \"inProduction\"", err)
+	}
+}
+
+// An ignoreLinks prefix matches with or without its trailing slash, at a
+// segment boundary.
+func TestIgnoreLinksSlash(t *testing.T) {
+	links := `<a href="/api">x</a><a href="/api/v1">x</a><a href="/apiary">x</a>`
+	for _, prefix := range []string{"/api", "/api/"} {
+		a := app(t, false, htmlcheck.Options{IgnoreLinks: []string{prefix}}, map[string]string{
+			"index": strings.Replace(clean, "</main>", links+"</main>", 1),
+		})
+		fs, _ := findings(t, a)
+		var broken []string
+		for _, f := range fs {
+			if f.Rule == "broken-link" && strings.Contains(f.Message, "/api") {
+				broken = append(broken, f.Message)
+			}
+		}
+		if len(broken) != 1 || !strings.Contains(broken[0], "/apiary") {
+			t.Errorf("ignoreLinks %q: broken links %q, want only /apiary", prefix, broken)
 		}
 	}
 }

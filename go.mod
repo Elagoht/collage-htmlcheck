@@ -6,7 +6,7 @@ module github.com/Elagoht/collage-htmlcheck
 
 go 1.26.0
 
-require github.com/Elagoht/collage v0.60.0
+require github.com/Elagoht/collage v0.61.0
 
 require golang.org/x/net v0.59.0
 

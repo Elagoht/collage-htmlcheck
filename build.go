@@ -33,7 +33,7 @@ func readSite(files []collage.BuiltFile) (*site, error) {
 		s.written[normalise(f.Path)] = true
 	}
 	for _, f := range files {
-		if f.Kind != "page" || f.Name == "" {
+		if f.Kind != collage.BuiltPage || f.Name == "" {
 			continue
 		}
 		body, err := os.ReadFile(f.File)
@@ -182,8 +182,8 @@ func (p *Plugin) ignored(path string) bool {
 	if strings.HasPrefix(path, "/_collage/") {
 		return true
 	}
-	for _, prefix := range p.opts.IgnoreLinks {
-		if strings.HasPrefix(path, prefix) {
+	for _, prefix := range p.opts.IgnoreLinks { // stored without a trailing slash
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
 			return true
 		}
 	}

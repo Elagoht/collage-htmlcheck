@@ -51,20 +51,20 @@ type Options struct {
 	// Rules changes rules' levels, by name. A rule not named keeps its default;
 	// see Rules() for every rule and its default.
 	Rules map[string]Level `json:"rules"`
-	// TitleMax and DescriptionMax are the lengths, in characters, past which a
-	// search engine cuts a title or a description short. Default 60 and 160.
-	TitleMax       int `json:"titleMax"`
+	// TitleMax is the length, in characters, past which a search engine cuts a
+	// title short. Default 60; a negative value is an error.
+	TitleMax int `json:"titleMax"`
+	// DescriptionMax is the length, in characters, past which a search engine
+	// cuts a meta description short. Default 160; a negative value is an error.
 	DescriptionMax int `json:"descriptionMax"`
 	// PageBudget is the size in bytes past which a page is reported by
-	// "page-size". Zero leaves the rule silent.
+	// "page-size". Zero leaves the rule silent; a negative value is an error.
 	PageBudget int `json:"pageBudget"`
 	// IgnoreLinks are path prefixes "broken-link" does not check: a route served
-	// by a handler of your own, an API.
+	// by a handler of your own, an API. A prefix matches at a segment boundary,
+	// with or without its trailing slash: "/api" and "/api/" both ignore /api
+	// and /api/v1, and neither /apiary.
 	IgnoreLinks []string `json:"ignoreLinks"`
-	// InProduction checks pages on a production server too. Its findings go
-	// nowhere there — collage shows them only in development and in builds — so
-	// this is only for a check of your own reading them in a hook.
-	InProduction bool `json:"inProduction"`
 }
 
 // RuleInfo describes one rule.
@@ -100,7 +100,7 @@ type Plugin struct {
 func New(opts Options) *Plugin { return &Plugin{opts: opts} }
 
 func (p *Plugin) Name() string                   { return Name }
-func (p *Plugin) Version() string                { return "0.1.6" }
+func (p *Plugin) Version() string                { return "0.2.0" }
 func (p *Plugin) Shutdown(context.Context) error { return nil }
 
 // Init reads the configuration and refuses a rule or level it does not know, so a
@@ -110,12 +110,26 @@ func (p *Plugin) Init(_ context.Context, host collage.Host) error {
 	if err != nil {
 		return err
 	}
+	switch {
+	case cfg.TitleMax < 0:
+		return fmt.Errorf("htmlcheck: titleMax %d must not be negative", cfg.TitleMax)
+	case cfg.DescriptionMax < 0:
+		return fmt.Errorf("htmlcheck: descriptionMax %d must not be negative", cfg.DescriptionMax)
+	case cfg.PageBudget < 0:
+		return fmt.Errorf("htmlcheck: pageBudget %d must not be negative", cfg.PageBudget)
+	}
+	// A copy without trailing slashes: the caller's Options keep their slice.
+	ignore := make([]string, 0, len(cfg.IgnoreLinks))
+	for _, prefix := range cfg.IgnoreLinks {
+		ignore = append(ignore, strings.TrimSuffix(prefix, "/"))
+	}
+	cfg.IgnoreLinks = ignore
 	p.opts = cfg
 	p.dev = host.DevMode()
-	if p.opts.TitleMax <= 0 {
+	if p.opts.TitleMax == 0 {
 		p.opts.TitleMax = 60
 	}
-	if p.opts.DescriptionMax <= 0 {
+	if p.opts.DescriptionMax == 0 {
 		p.opts.DescriptionMax = 160
 	}
 	known := make(map[string]bool)
@@ -142,7 +156,7 @@ func (p *Plugin) level(name string, def Level) Level {
 
 // OnAfterRender checks one page.
 func (p *Plugin) OnAfterRender(_ context.Context, ev *collage.AfterRenderEvent) error {
-	if !ev.Static && !p.dev && !p.opts.InProduction {
+	if !ev.Static && !p.dev {
 		return nil
 	}
 	doc, err := html.Parse(bytes.NewReader(ev.HTML))
